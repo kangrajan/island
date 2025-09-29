@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Island Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .mobile-screen {
+            width: 375px;
+            height: 812px;
+            background-color: #ffffff;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-image: linear-gradient(to bottom, #f9fafb, #e5e7eb);
+        }
+
+        .main-content h1 { font-size: 1.5rem; font-weight: 600; color: #1f2937; margin-bottom: 1rem; }
+        .main-content p { color: #4b5563; line-height: 1.6; margin-bottom: 1rem; }
+        .main-content .placeholder-item { background-color: #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 10px; color: #374151; }
+
+        .dynamic-island {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #2C2C2E;
+            color: white;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            padding: 12px 20px;
+            min-height: 60px;
+            max-height: 60px;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.23, 1, 0.32, 1), padding 0.5s cubic-bezier(0.23, 1, 0.32, 1), border-left-color 0.3s ease-in-out;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid transparent; /* For action required indication */
+        }
+
+        .dynamic-island.expanded {
+            max-height: 80vh; /* Increased slightly for more complex forms */
+            padding: 20px;
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+        }
+        
+        .dynamic-island.action-required {
+             border-left-color: #58C45F; /* Green accent for action */
+        }
+        .dynamic-island.action-required .island-collapsed-content .island-header {
+            color: #58C45F; /* Green text for header in action state */
+        }
+
+
+        .island-collapsed-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .dynamic-island.expanded .island-collapsed-content { opacity: 0; height: 0; pointer-events: none; }
+
+        .island-expanded-content {
+            display: none;
+            opacity: 0;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            transition: opacity 0.3s ease-in-out 0.2s;
+        }
+        .dynamic-island.expanded .island-expanded-content { display: flex; opacity: 1; }
+
+        .island-header { font-size: 0.9rem; font-weight: 500; color: #AEAEB2; transition: color 0.3s ease-in-out; }
+        .island-title { font-size: 1.1rem; font-weight: 600; margin-top: 2px; }
+        .island-action-icon { font-size: 1.5rem; transform: rotate(0deg); transition: transform 0.3s ease-in-out; }
+        .dynamic-island.expanded .island-action-icon { transform: rotate(180deg); }
+
+        .island-expanded-content h2 { font-size: 1.3rem; font-weight: 700; color: white; margin-bottom: 15px; border-bottom: 1px solid #4a4a4c; padding-bottom: 10px; }
+        .island-expanded-content h3 { font-size: 1.1rem; font-weight: 600; color: #AEAEB2; margin-bottom: 10px; }
+        .island-expanded-content p.info { color: #AEAEB2; font-size: 0.9rem; margin-bottom: 15px; }
+
+
+        .island-button {
+            background-color: #58C45F; color: white; padding: 10px 15px; border-radius: 8px;
+            text-align: center; font-weight: 500; margin-top: 10px; cursor: pointer;
+            transition: background-color 0.2s ease; border: none;
+        }
+        .island-button:hover { background-color: #4CAF50; }
+        .island-button.secondary { background-color: #4A4A4C; }
+        .island-button.secondary:hover { background-color: #5f5f61; }
+        .island-button:disabled { background-color: #3a3a3c; color: #7e7e81; cursor: not-allowed; }
+        .island-button i { margin-right: 8px; } /* Space for icons in buttons */
+
+        .island-text-link {
+            color: #A0A0A0; /* Lighter gray for text links */
+            text-decoration: none;
+            padding: 8px 0; /* Add some padding for easier tapping */
+            display: inline-block; /* Allows padding */
+            margin-bottom: 8px;
+            transition: color 0.2s ease;
+        }
+        .island-text-link:hover {
+            color: #C0C0C0; /* Slightly lighter on hover */
+        }
+        .island-text-link i {
+            margin-right: 8px;
+            color: #58C45F; /* Keep icon color green for accent */
+        }
+
+
+        .item-grid { /* For student/staff selection */
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Responsive grid */
+            gap: 10px;
+            max-height: 35vh; 
+            overflow-y: auto;
+            padding-right: 5px; /* Space for scrollbar */
+        }
+        .grid-item { /* Generic item style for grid */
+            background-color: #3A3A3C; padding: 10px; border-radius: 6px;
+            display: flex; flex-direction: column; /* Stack content vertically */
+            align-items: center; /* Center checkbox/radio */
+            text-align: center;
+            cursor: pointer; transition: background-color 0.2s;
+            min-height: 60px; /* Ensure decent tap target */
+            justify-content: center;
+        }
+        .grid-item:hover { background-color: #4a4a4c; }
+        .grid-item.selected { background-color: #58C45F; color: #1c1c1e; font-weight: 500; }
+        .grid-item input[type="checkbox"],
+        .grid-item input[type="radio"] {
+            margin-bottom: 5px; /* Space between input and name */
+            accent-color: #58C45F; width: 18px; height: 18px; flex-shrink: 0;
+        }
+        .grid-item span { font-size: 0.85rem; word-break: break-word; }
+
+        /* Assessment specific styles */
+        .assessment-question { margin-bottom: 20px; }
+        .assessment-question p { color: #E0E0E0; margin-bottom: 8px; }
+        .thumbs-options { display: flex; gap: 15px; justify-content: center; }
+        .thumb-button { background-color: #4A4A4C; border-radius: 8px; padding: 10px 15px; cursor: pointer; transition: background-color 0.2s; }
+        .thumb-button:hover { background-color: #5f5f61; }
+        .thumb-button.selected { background-color: #58C45F; }
+        .thumb-button i { font-size: 1.5rem; }
+        
+        textarea.island-input, select.island-input {
+            width: 100%; background-color: #3A3A3C; color: white; border: 1px solid #5A5A5C;
+            border-radius: 6px; padding: 10px; margin-top: 5px; margin-bottom: 15px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Tab styling for course materials */
+        .material-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #4a4a4c; }
+        .tab-button {
+            padding: 10px 15px; cursor: pointer; color: #AEAEB2;
+            border-bottom: 2px solid transparent; margin-bottom: -1px; /* Overlap border */
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .tab-button.active { color: #58C45F; border-bottom-color: #58C45F; font-weight: 500; }
+        .material-content { display: none; }
+        .material-content.active { display: block; }
+
+
+        .island-expanded-content::-webkit-scrollbar,
+        .item-grid::-webkit-scrollbar { width: 6px; }
+        .island-expanded-content::-webkit-scrollbar-track,
+        .item-grid::-webkit-scrollbar-track { background: #3A3A3C; border-radius: 3px; }
+        .island-expanded-content::-webkit-scrollbar-thumb,
+        .item-grid::-webkit-scrollbar-thumb { background: #58C45F; border-radius: 3px; }
+        .island-expanded-content::-webkit-scrollbar-thumb:hover,
+        .item-grid::-webkit-scrollbar-thumb:hover { background: #4CAF50; }
+
+        .notch {
+            width: 150px; height: 30px; background-color: #111;
+            border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-screen">
+        <div class="notch"></div>
+        <div class="main-content">
+            <h1>App Main Content</h1>
+            <p>This is where the main application content would be displayed. Scroll to see more.</p>
+            <div class="placeholder-item">Upcoming Appointments</div>
+            <div class="placeholder-item">Recent Activity</div>
+            <p>More content to make the page scrollable and test the island's persistence.</p>
+            <div class="placeholder-item">Another Item</div>
+            <p>Lorem ipsum dolor sit amet...</p>
+        </div>
+
+        <div id="dynamicIsland" class="dynamic-island">
+            <div class="island-collapsed-content">
+                <div>
+                    <div id="collapsedHeader" class="island-header">Not Signed In</div>
+                    <div id="collapsedTitle" class="island-title">Tap to Sign In for Today</div>
+                </div>
+                <div class="island-action-icon">▲</div>
+            </div>
+            <div class="island-expanded-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const dynamicIsland = document.getElementById('dynamicIsland');
+        const collapsedHeader = document.getElementById('collapsedHeader');
+        const collapsedTitle = document.getElementById('collapsedTitle');
+        const expandedContentContainer = dynamicIsland.querySelector('.island-expanded-content');
+        let isExpanded = false;
+        let currentState = 'notSignedIn';
+        let selectedStudentsForTransfer = [];
+        
+        // Temporary storage for assessment
+        let assessmentAnswers = { lessonWell: null, curriculumMet: null, incidentsToday: null, lessonExplanation: '', curriculumExplanation: '', incidentType: '', incidentStudents: [], incidentDetails: '' };
+
+        const mockStudents = ["Alice Smith", "Bob Johnson", "Charlie Brown", "Diana Prince", "Edward Nygma", "Fiona Gallagher", "George Jetson", "Hannah Montana", "Ivy Pepper", "Jack Napier", "Kevin McCallister", "Linda Hamilton"];
+        const mockStaff = ["Prof. Dumbledore", "Mr. Garrison", "Ms. Frizzle", "Dr. Who"];
+        const incidentTypes = ["Behavior", "Safety", "Equipment", "Medical", "Other"];
+
+        // --- STATE DEFINITIONS ---
+        const islandStates = {
+            notSignedIn: {
+                collapsed: { header: "Not Signed In", title: "Tap to Sign In for Today" },
+                actionRequired: true,
+                expanded: () => `<h2>Sign In & Prepare</h2><p class="text-sm text-gray-400 mb-4">Get ready for your workday.</p><button class="island-button" onclick="changeState('prepMaterials')">Sign In for Today</button>`
+            },
+            prepMaterials: {
+                collapsed: { header: "Daily Prep", title: "View Materials & Check-in" },
+                actionRequired: true, // Action is to check-in
+                expanded: () => `<h2>Daily Prep</h2>
+                    <p class="info">Please review the preparation materials before checking in.</p>
+                    <div class="mb-4"> <a href="#" class="island-text-link" onclick="mockAlert('Video link clicked'); return false;"><i class="fas fa-video"></i> Watch Video</a><br>
+                        <a href="#" class="island-text-link" onclick="mockAlert('Presentation link clicked'); return false;"><i class="fas fa-file-powerpoint"></i> View Presentation</a>
+                    </div>
+                    <hr class="my-4 border-gray-600">
+                    <button class="island-button" onclick="changeState('geoCheckIn')"><i class="fas fa-map-marker-alt"></i> Perform Geo Check-in</button>
+                    <button class="island-button mt-6 secondary" onclick="changeState('notSignedIn')">Back to Sign In</button>`
+            },
+            geoCheckIn: {
+                collapsed: { header: "Geo Check-in", title: "Verifying Location..." },
+                actionRequired: true,
+                expanded: () => `<h2>Geo Check-in</h2><p class="text-center my-4">Verifying your location, please wait...</p><div class="flex justify-around mt-4"><button class="island-button" onclick="changeState('checkInSuccess')">Simulate Success</button><button class="island-button secondary" onclick="changeState('checkInFailure')">Simulate Failure</button></div>`
+            },
+            checkInSuccess: {
+                collapsed: { header: "Checked In!", title: "Ready for Active Event" },
+                actionRequired: false,
+                expanded: () => `<h2>Check-in Complete!</h2><p class="text-green-400 my-3 text-center">Location verified successfully.</p><button class="island-button" onclick="changeState('activeEvent')">View Today's Schedule</button>`
+            },
+            checkInFailure: {
+                collapsed: { header: "Check-in Issue", title: "Manual Check-in Required" },
+                actionRequired: true,
+                expanded: () => `<h2>Check-in Issue</h2><p class="text-red-400 my-3 text-center">Could not verify location automatically.</p><button class="island-button" onclick="changeState('activeEvent')">Proceed (Manual Check-in)</button><button class="island-button secondary" onclick="changeState('geoCheckIn')">Retry Geo Check-in</button>`
+            },
+            activeEvent: {
+                collapsed: { header: "Active: Morning Workshop", title: "9:00 AM - Room 101" },
+                actionRequired: false, // Becomes true if, say, 'Accept Students' is pending
+                expanded: () => `<h2>Active: Morning Workshop</h2>
+                    <p class="text-sm text-gray-400 mb-1">Time: 9:00 AM - 12:00 PM</p>
+                    <p class="text-sm text-gray-400 mb-4">Location: Room 101</p>
+                    <button class="island-button secondary" onclick="changeState('courseMaterials')"><i class="fas fa-book-open"></i> Course Materials</button>
+                    <button class="island-button secondary" onclick="mockAlert('View Roster')"><i class="fas fa-users"></i> View Roster</button>
+                    <button class="island-button" onclick="changeState('acceptStudents')"><i class="fas fa-user-check"></i> Accept Students</button>
+                    <button class="island-button" onclick="changeState('transferStudentsSelect')"><i class="fas fa-exchange-alt"></i> Transfer Students</button> 
+                    <button class="island-button mt-4 secondary" onclick="changeState('endOfDayAssessment')"><i class="fas fa-tasks"></i> End Day & Assess</button>
+                    <div class="flex justify-between mt-4"><button class="text-xs text-gray-400 hover:text-white p-2" onclick="mockAlert('Prev Event')">◀ Prev</button><button class="text-xs text-gray-400 hover:text-white p-2" onclick="mockAlert('Next Event')">Next ▶</button></div>`
+            },
+            courseMaterials: {
+                collapsed: { header: "Active Event", title: "Viewing Course Materials" },
+                actionRequired: false,
+                expanded: () => `<h2>Course Materials</h2>
+                    <div class="material-tabs">
+                        <button class="tab-button active" onclick="switchMaterialTab(this, 'instructor')">Instructor</button>
+                        <button class="tab-button" onclick="switchMaterialTab(this, 'learner')">Learner</button>
+                    </div>
+                    <div id="instructorMaterials" class="material-content active">
+                        <p class="info">Instructor-specific notes, guides, and resources for "Morning Workshop".</p>
+                        <ul><li>Lesson Plan Overview</li><li>Key Talking Points</li><li>Activity Instructions</li></ul>
+                    </div>
+                    <div id="learnerMaterials" class="material-content">
+                        <p class="info">Materials to be shared with or used by learners for "Morning Workshop".</p>
+                        <ul><li>Worksheet PDF</li><li>Interactive Quiz Link</li><li>Supplementary Reading</li></ul>
+                    </div>
+                    <button class="island-button mt-6 secondary" onclick="changeState('activeEvent')">Back to Event</button>`
+            },
+            acceptStudents: {
+                collapsed: { header: "Active Event", title: "Accept Students Now" },
+                actionRequired: true,
+                expanded: () => {
+                    let studentGridHTML = mockStudents.map((student, index) => `
+                        <label class="grid-item" for="accept-student-${index}" onclick="toggleGridItemSelection(this)">
+                            <input type="checkbox" id="accept-student-${index}" data-name="${student}" checked>
+                            <span>${student}</span>
+                        </label>`).join('');
+                    return `<h2>Accept Students for Group</h2><div class="item-grid mb-4">${studentGridHTML}</div>
+                        <div class="flex justify-between"><button class="island-button secondary" style="flex-basis: 48%;" onclick="mockAlert('Reject All')">Reject All</button><button class="island-button" style="flex-basis: 48%;" onclick="changeState('activeEvent')">Accept Selected</button></div>
+                        <button class="island-button mt-6 secondary" onclick="changeState('activeEvent')">Back to Event</button>`;
+                }
+            },
+            transferStudentsSelect: {
+                collapsed: { header: "Transfer", title: "Step 1: Select Students" },
+                actionRequired: true,
+                expanded: () => {
+                    selectedStudentsForTransfer = []; 
+                    let studentGridHTML = mockStudents.map((student, index) => `
+                        <label class="grid-item" for="transfer-student-${index}" onclick="toggleGridItemSelection(this, true)">
+                            <input type="checkbox" name="transferStudent" id="transfer-student-${index}" value="${student}">
+                            <span>${student}</span>
+                        </label>`).join('');
+                    return `<h2>Transfer Students</h2><h3>Step 1: Select Students</h3><div class="item-grid mb-4">${studentGridHTML}</div>
+                        <button class="island-button" id="nextToSelectStaffBtn" onclick="changeState('transferStudentsSelectStaff')" disabled>Next: Select Staff</button>
+                        <button class="island-button mt-3 secondary" onclick="changeState('activeEvent')">Cancel</button>`;
+                }
+            },
+            transferStudentsSelectStaff: {
+                collapsed: { header: "Transfer", title: "Step 2: Select Staff" },
+                actionRequired: true,
+                expanded: () => {
+                    if (selectedStudentsForTransfer.length === 0) return `<h2>Error</h2><p>No students selected.</p><button class="island-button" onclick="changeState('transferStudentsSelect')">Back</button>`;
+                    let staffGridHTML = mockStaff.map((staff, index) => `
+                        <label class="grid-item" for="transfer-staff-${index}" onclick="toggleGridItemSelection(this, false, true)">
+                            <input type="radio" name="transferStaff" id="transfer-staff-${index}" value="${staff}">
+                            <span>${staff}</span>
+                        </label>`).join('');
+                    return `<h2>Transfer Students</h2><h3>Step 2: Select Staff <span class="text-sm text-gray-400">(${selectedStudentsForTransfer.length} student(s))</span></h3>
+                        <div class="item-grid mb-4">${staffGridHTML}</div>
+                        <button class="island-button" id="confirmTransferBtn" onclick="confirmTransfer()" disabled>Confirm Transfer</button>
+                        <button class="island-button mt-3 secondary" onclick="changeState('transferStudentsSelect')">Back</button>`;
+                }
+            },
+            // ASSESSMENT STATES
+            endOfDayAssessment: {
+                collapsed: { header: "Assessment", title: "Provide Session Feedback" },
+                actionRequired: true,
+                expanded: () => `<h2>End of Session Assessment</h2>
+                    <div class="assessment-question">
+                        <p>Did the lesson go well?</p>
+                        <div class="thumbs-options">
+                            <button class="thumb-button" onclick="selectThumb('lessonWell', true, this)"><i class="fas fa-thumbs-up"></i></button>
+                            <button class="thumb-button" onclick="selectThumb('lessonWell', false, this)"><i class="fas fa-thumbs-down"></i></button>
+                        </div>
+                    </div>
+                    <div class="assessment-question">
+                        <p>Did the curriculum meet expectations?</p>
+                        <div class="thumbs-options">
+                            <button class="thumb-button" onclick="selectThumb('curriculumMet', true, this)"><i class="fas fa-thumbs-up"></i></button>
+                            <button class="thumb-button" onclick="selectThumb('curriculumMet', false, this)"><i class="fas fa-thumbs-down"></i></button>
+                        </div>
+                    </div>
+                    <div class="assessment-question">
+                        <p>Were there any incidents today?</p>
+                        <div class="thumbs-options">
+                            <button class="thumb-button" onclick="selectThumb('incidentsToday', true, this)"><i class="fas fa-thumbs-up"></i></button>
+                            <button class="thumb-button" onclick="selectThumb('incidentsToday', false, this)"><i class="fas fa-thumbs-down"></i></button>
+                        </div>
+                    </div>
+                    <button class="island-button" onclick="processAssessment()" id="submitAssessmentBtn" disabled>Next</button>
+                    <button class="island-button mt-3 secondary" onclick="changeState('activeEvent')">Cancel Assessment</button>`
+            },
+            assessmentExplainLesson: {
+                collapsed: { header: "Assessment", title: "Explain Lesson Issues" },
+                actionRequired: true,
+                expanded: () => `<h2>Explain Lesson Issues</h2>
+                    <p class="info">Please provide details on why the lesson didn't go well.</p>
+                    <textarea id="lessonExplanationInput" class="island-input" rows="4" placeholder="Type here...">${assessmentAnswers.lessonExplanation}</textarea>
+                    <button class="island-button" onclick="submitExplanation('lesson')">Submit & Continue</button>`
+            },
+            assessmentExplainCurriculum: {
+                collapsed: { header: "Assessment", title: "Explain Curriculum Issues" },
+                actionRequired: true,
+                expanded: () => `<h2>Explain Curriculum Issues</h2>
+                    <p class="info">Please provide details on why the curriculum didn't meet expectations.</p>
+                    <textarea id="curriculumExplanationInput" class="island-input" rows="4" placeholder="Type here...">${assessmentAnswers.curriculumExplanation}</textarea>
+                    <button class="island-button" onclick="submitExplanation('curriculum')">Submit & Continue</button>`
+            },
+            incidentReportType: {
+                collapsed: { header: "Incident Report", title: "Step 1: Select Type" },
+                actionRequired: true,
+                expanded: () => {
+                    const options = incidentTypes.map(type => `<option value="${type}" ${assessmentAnswers.incidentType === type ? 'selected' : ''}>${type}</option>`).join('');
+                    return `<h2>Report Incident - Step 1</h2><h3>Select Incident Type</h3>
+                        <select id="incidentTypeSelect" class="island-input">${options}</select>
+                        <button class="island-button" onclick="submitIncidentReportStep('type')">Next: Select Student(s)</button>
+                        <button class="island-button mt-3 secondary" onclick="processAssessment(true)">Back to Assessment Summary</button>`;
+                }
+            },
+            incidentReportStudents: {
+                collapsed: { header: "Incident Report", title: "Step 2: Select Students" },
+                actionRequired: true,
+                expanded: () => {
+                    let studentGridHTML = mockStudents.map((student, index) => `
+                        <label class="grid-item" for="incident-student-${index}" onclick="toggleGridItemSelection(this, false, false, true)">
+                            <input type="checkbox" name="incidentStudent" id="incident-student-${index}" value="${student}" ${assessmentAnswers.incidentStudents.includes(student) ? 'checked' : ''}>
+                            <span>${student}</span>
+                        </label>`).join('');
+                    return `<h2>Report Incident - Step 2</h2><h3>Select Student(s) Involved</h3>
+                        <div class="item-grid mb-4">${studentGridHTML}</div>
+                        <button class="island-button" onclick="submitIncidentReportStep('students')">Next: Add Details</button>
+                        <button class="island-button mt-3 secondary" onclick="changeState('incidentReportType')">Back to Incident Type</button>`;
+                }
+            },
+            incidentReportDetails: {
+                collapsed: { header: "Incident Report", title: "Step 3: Add Details" },
+                actionRequired: true,
+                expanded: () => `<h2>Report Incident - Step 3</h2><h3>Incident Details</h3>
+                    <textarea id="incidentDetailsInput" class="island-input" rows="5" placeholder="Describe the incident...">${assessmentAnswers.incidentDetails}</textarea>
+                    <button class="island-button" onclick="submitIncidentReportStep('details')">Submit Incident Report</button>
+                    <button class="island-button mt-3 secondary" onclick="changeState('incidentReportStudents')">Back to Select Students</button>`
+            },
+            assessmentComplete: {
+                collapsed: { header: "Assessment Complete", title: "Thank You!" },
+                actionRequired: false,
+                expanded: () => `<h2>Assessment Complete</h2>
+                    <p class="text-green-400 my-3 text-center">Thank you for your feedback and report!</p>
+                    <button class="island-button" onclick="changeState('activeEvent')">Back to Active Event</button>
+                    <button class="island-button secondary mt-3" onclick="changeState('notSignedIn')">Sign Out (End Day)</button>`
+            }
+        };
+
+        // --- FUNCTIONS ---
+        function mockAlert(message) {
+            console.log("Mock Alert:", message);
+            const tempMsg = document.createElement('div');
+            tempMsg.textContent = message;
+            tempMsg.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background-color:#333;color:white;padding:10px 20px;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,0.2);z-index:1000;transition:opacity 0.5s;`;
+            document.body.appendChild(tempMsg);
+            setTimeout(() => { tempMsg.style.opacity = '0'; setTimeout(() => tempMsg.remove(), 500); }, 2000);
+        }
+
+        function updateIslandUI(stateConfig) {
+            collapsedHeader.textContent = stateConfig.collapsed.header;
+            collapsedTitle.textContent = stateConfig.collapsed.title;
+            dynamicIsland.classList.toggle('action-required', !!stateConfig.actionRequired);
+
+            if (typeof stateConfig.expanded === 'function') expandedContentContainer.innerHTML = stateConfig.expanded();
+            else expandedContentContainer.innerHTML = stateConfig.expanded;
+        }
+
+        function toggleIsland() {
+            isExpanded = !isExpanded;
+            dynamicIsland.classList.toggle('expanded', isExpanded);
+            if (isExpanded) {
+                const firstFocusable = expandedContentContainer.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (firstFocusable) firstFocusable.focus();
+            }
+        }
+        
+        function changeState(newStateKey, skipExpand = false) {
+            if (islandStates[newStateKey]) {
+                currentState = newStateKey;
+                updateIslandUI(islandStates[currentState]);
+                if (isExpanded && !skipExpand) {
+                     const firstFocusable = expandedContentContainer.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                     if (firstFocusable) firstFocusable.focus();
+                }
+                 // Scroll expanded content to top when state changes
+                if (isExpanded) expandedContentContainer.scrollTop = 0;
+            } else console.error("Unknown state:", newStateKey);
+        }
+
+        function toggleGridItemSelection(labelElement, isTransferStudentSelection = false, isRadio = false, isIncidentStudentSelection = false) {
+            const inputElement = labelElement.querySelector('input');
+            if (!inputElement) return;
+
+            if (isRadio) {
+                // Manually set checked state for radio if label is clicked
+                if (event.target.tagName !== 'INPUT') inputElement.checked = true;
+                
+                // Update visual selection for radio group
+                const groupName = inputElement.name;
+                document.querySelectorAll(`input[name="${groupName}"]`).forEach(radio => {
+                    radio.closest('.grid-item').classList.toggle('selected', radio.checked);
+                });
+            } else { // Checkbox
+                 if (event.target.tagName !== 'INPUT') inputElement.checked = !inputElement.checked; // Toggle if label clicked
+                labelElement.classList.toggle('selected', inputElement.checked);
+            }
+            
+            // Dispatch change event to trigger other logic
+            const changeEvent = new Event('change', { bubbles: true });
+            inputElement.dispatchEvent(changeEvent);
+
+
+            // Specific logic for transfer students
+            if (isTransferStudentSelection) {
+                if (inputElement.checked) selectedStudentsForTransfer.push(inputElement.value);
+                else selectedStudentsForTransfer = selectedStudentsForTransfer.filter(name => name !== inputElement.value);
+                const nextButton = document.getElementById('nextToSelectStaffBtn');
+                if (nextButton) nextButton.disabled = selectedStudentsForTransfer.length === 0;
+            } 
+            // Specific logic for incident students
+            else if (isIncidentStudentSelection) {
+                if (inputElement.checked) {
+                    if (!assessmentAnswers.incidentStudents.includes(inputElement.value)) assessmentAnswers.incidentStudents.push(inputElement.value);
+                } else {
+                    assessmentAnswers.incidentStudents = assessmentAnswers.incidentStudents.filter(name => name !== inputElement.value);
+                }
+            }
+            // Specific logic for enabling staff transfer confirm button
+            else if (isRadio && inputElement.name === 'transferStaff') {
+                 const confirmButton = document.getElementById('confirmTransferBtn');
+                 if (confirmButton) confirmButton.disabled = !document.querySelector('input[name="transferStaff"]:checked');
+            }
+        }
+        
+        function confirmTransfer() {
+            const selectedStaffRadio = document.querySelector('input[name="transferStaff"]:checked');
+            if (!selectedStaffRadio) { mockAlert("Please select a staff member."); return; }
+            mockAlert(`Transferring ${selectedStudentsForTransfer.join(', ')} to ${selectedStaffRadio.value}. (Mocked)`);
+            selectedStudentsForTransfer = [];
+            changeState('activeEvent');
+        }
+
+        function switchMaterialTab(button, tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            document.querySelectorAll('.material-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Materials').classList.add('active');
+        }
+
+        // --- ASSESSMENT FUNCTIONS ---
+        function selectThumb(question, value, buttonElement) {
+            assessmentAnswers[question] = value;
+            // Visual selection for thumbs
+            const parentOptions = buttonElement.parentElement;
+            parentOptions.querySelectorAll('.thumb-button').forEach(btn => btn.classList.remove('selected'));
+            buttonElement.classList.add('selected');
+            // Check if all assessment questions answered
+            if (assessmentAnswers.lessonWell !== null && assessmentAnswers.curriculumMet !== null && assessmentAnswers.incidentsToday !== null) {
+                document.getElementById('submitAssessmentBtn').disabled = false;
+            }
+        }
+
+        function processAssessment(skipChecks = false) { // skipChecks is used when coming back from incident report
+            if (!skipChecks) {
+                if (assessmentAnswers.lessonWell === null || assessmentAnswers.curriculumMet === null || assessmentAnswers.incidentsToday === null) {
+                    mockAlert("Please answer all assessment questions.");
+                    return;
+                }
+            }
+
+            if (!assessmentAnswers.lessonWell && !assessmentAnswers.lessonExplanation && !skipChecks) {
+                changeState('assessmentExplainLesson');
+            } else if (!assessmentAnswers.curriculumMet && !assessmentAnswers.curriculumExplanation && !skipChecks) {
+                changeState('assessmentExplainCurriculum');
+            } else if (assessmentAnswers.incidentsToday && !assessmentAnswers.incidentDetails && !skipChecks) { // If incident yes, and no details yet
+                changeState('incidentReportType');
+            } else {
+                // All done or explanations/incident reports handled
+                console.log("Final Assessment Data:", JSON.parse(JSON.stringify(assessmentAnswers))); // Log a copy
+                changeState('assessmentComplete');
+            }
+        }
+        
+        function submitExplanation(type) {
+            if (type === 'lesson') assessmentAnswers.lessonExplanation = document.getElementById('lessonExplanationInput').value;
+            else if (type === 'curriculum') assessmentAnswers.curriculumExplanation = document.getElementById('curriculumExplanationInput').value;
+            processAssessment(); // Re-evaluate next step
+        }
+
+        function submitIncidentReportStep(step) {
+            if (step === 'type') {
+                assessmentAnswers.incidentType = document.getElementById('incidentTypeSelect').value;
+                changeState('incidentReportStudents');
+            } else if (step === 'students') {
+                // student selection is handled by toggleGridItemSelection via assessmentAnswers.incidentStudents
+                if(assessmentAnswers.incidentStudents.length === 0){
+                    mockAlert("Please select at least one student involved in the incident.");
+                    return;
+                }
+                changeState('incidentReportDetails');
+            } else if (step === 'details') {
+                assessmentAnswers.incidentDetails = document.getElementById('incidentDetailsInput').value;
+                if(!assessmentAnswers.incidentDetails.trim()){
+                     mockAlert("Please provide details for the incident.");
+                    return;
+                }
+                processAssessment(); // All incident steps done, re-evaluate main assessment flow
+            }
+        }
+
+
+        // --- EVENT LISTENERS ---
+        dynamicIsland.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target === dynamicIsland || target.closest('.island-collapsed-content')) {
+                 toggleIsland(); return;
+            }
+            if (isExpanded && target.closest('.island-expanded-content')) {
+                if (target.matches('button, input, select, textarea, a, [onclick]') || target.closest('label.grid-item') || target.closest('.thumb-button') || target.closest('.tab-button')) {
+                    return; 
+                }
+            }
+        });
+        
+        // Delegated event listener for grid item input changes (for radio button enabling logic mostly)
+        expandedContentContainer.addEventListener('change', function(event) {
+            const target = event.target;
+            if (target.type === 'radio' && target.name === 'transferStaff') {
+                 const confirmButton = document.getElementById('confirmTransferBtn');
+                 if (confirmButton) confirmButton.disabled = !target.checked;
+            }
+        });
+
+
+        // Initialize
+        updateIslandUI(islandStates.notSignedIn);
+    </script>
+</body>
+</html>
